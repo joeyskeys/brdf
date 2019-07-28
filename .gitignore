@@ -13,5 +13,6 @@ Linux-*
 *.suo
 *.user
 *.vcxproj
+.qmake.stash
 src/brdf/release
 src/brdf/debug
