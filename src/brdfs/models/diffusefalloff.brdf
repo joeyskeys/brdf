@@ -1,0 +1,38 @@
+analytic
+
+# Lambertian diffuse model with control over the falloff between lit and unlit regions in the surface.
+# From the SIGGRAPH 2002 course 16 RenderMan in Production, chapter 3,
+# "Light/Surface Interactions", by Matt Pharr.
+
+# parameter block
+
+::begin parameters
+float falloff 0 1 0.1
+float nondiff 0 1 0.1
+color cl 0.5 0.5 0.5
+::end parameters
+
+# shader code block
+
+::begin shader
+
+// Check https://blog.demofox.org/2012/09/24/bias-and-gain-are-your-friend/
+// for explanation of bias and gain function
+
+float bias(float x, float bias)
+{
+    return bias > 0 ? pow(x, log(bias) / log(0.5)) : 0;
+}
+
+float gain(float x, float gain)
+{
+    return 0.5 * (x < 0.5 ? bias(2 * x, 1 - gain) : 2 - bias(2 - 2 * x, 1 - gain));
+}
+
+vec3 BRDF(vec3 L, vec3 V, vec3 N, vec3 X, vec3 Y)
+{
+    // vec3 Nf = dot(N, V) > 0 ? N : -N;
+    vec3 Ln = normalize(L);
+    
+    return cl * (1 - nondiff) * gain(max(dot(N, Ln), 0), falloff);
+}

@@ -8,7 +8,7 @@ analytic
 float wangle 0 180 45
 float atten  0 10 1
 float nondiff 0 1   0.5
-color color  0.5 0.5 0.5
+color cl  0.5 0.5 0.5
 ::end parameters
 
 # shader code block
@@ -29,6 +29,6 @@ vec3 BRDF(vec3 L, vec3 V, vec3 N, vec3 X, vec3 Y)
     float gamma = 5;
     float wangle_radian = toRadian(wangle);
 
-    #return color * (1 - acos(dot(Ln, Nf)) / wangle_radian);
-    return color * (1 - nondiff) * pow(max((1 - acos(dot(Ln, Nf)) / wangle_radian), 0), atten);
+    #return cl * (1 - acos(dot(Ln, Nf)) / wangle_radian);
+    return cl * (1 - nondiff) * pow(max((1 - acos(max(dot(Ln, N), 0)) / wangle_radian), 0), atten);
 }

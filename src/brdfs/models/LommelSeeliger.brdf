@@ -1,0 +1,28 @@
+analytic
+
+# Lommel-Seeliger BRDF, tau = [0,1], 0 = infinite optical depth, 1 = layer
+# thickness - isotropical scattering (forward/backscattering)
+
+# parameter block
+
+::begin parameters
+float tau 0 5 0.2
+float nondiff 0 1 0.1
+color cl 0.5 0.5 0.5
+::end parameters
+
+# shader code block
+
+::begin shader
+
+// Take a look of https://iopscience.iop.org/article/10.1088/1674-4527/17/10/106/pdf
+// This model relates to asteroid photometry
+
+vec3 BRDF(vec3 L, vec3 V, vec3 N, vec3 X, vec3 Y)
+{
+    vec3 Ln = normalize(L);
+    float costheta = max(dot(N, V), 0);
+    float cospsi = max(dot(L, N), 0);
+
+    return cl * (1 - nondiff) * (1 / (cospsi + costheta)) * (1 - exp(-tau * (1 / cospsi + 1 / costheta))) * cospsi;
+}
