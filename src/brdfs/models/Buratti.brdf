@@ -1,0 +1,46 @@
+analytic
+
+// Buratti photometric model, based on "Photometry and Surface Structure of //
+// the Icy Galilean Satellites", by Bonnie J. Buratti, Jet Propulsion ////////
+// Laboratory, in "Journal of Geophysical Research", "special issue on the ///
+// Icy Galilean Satellites".
+
+# parameter block
+
+::begin parameters
+float k 0 1 0.2
+float sden 0 1 0.2
+float nondiff 0 1 0.5
+color cl 0.5 0.5 0.5
+::end parameters
+
+# shader code block
+
+// Reference: https://pdfs.semanticscholar.org/5d14/483339eb25ea361aa274015695a3f2b0df2c.pdf
+
+::begin shader
+
+const float EPS = 0.0001;
+const float PI_2 = 3.14159265358979323846 / 2;
+
+vec3 BRDF(vec3 L, vec3 V, vec3 N, vec3 X, vec3 Y)
+{
+    vec3 Nf = dot(N, V) > 0 ? N : -N;
+    float costheta = max(dot(N, V), 0);
+    float cosalpha, tanalpha, alpha, R;
+
+    vec3 Ln = normalize(L);
+    float cospsi = dot(Ln, N);
+    cosalpha = clamp(dot(V, Ln), EPS, 1 - EPS);
+    float cosalpha_square = cosalpha * cosalpha;
+    tanalpha = sqrt(max(0, 1 - cosalpha_square)) / cosalpha;
+    alpha = acos(cosalpha);
+
+    R = alpha < PI_2 - EPS ? 2 - tanalpha / 2 / sden * (1 - exp(-sden / tanalpha)) * (3 - exp(-sden / tanalpha)) : 1;
+
+    return cl * (1 - nondiff) * (k * (cospsi / (cospsi + costheta)) * sden + (1 - k) * cospsi) * R;
+
+    // Try out each term;
+    // return cl * (1 - nondiff) * (k * (cospsi / (cospsi + costheta)) * sden) * R;
+    // return cl * (1 - nondiff) * ((1 - k) * cospsi) * R;
+}
