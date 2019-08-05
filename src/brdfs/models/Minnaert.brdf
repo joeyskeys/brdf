@@ -1,0 +1,33 @@
+analytic
+
+// Minnaert limb darkening term (Note: Nvidia uses a different approach   ////
+// in which the limb coefficient is in the 0,1 range, this one is in the 12 //
+// range.
+
+# parameter block
+
+::begin parameters
+float k 1 5 1.5
+float nondiff 0 1 0.5
+color cl 0.5 0.5 0.5
+::end parameters
+
+# shader code block
+
+::begin shader
+
+// References:
+// http://adsabs.harvard.edu/abs/1930ZA......1..209M
+// https://en.wikipedia.org/wiki/Limb_darkening
+
+vec3 BRDF(vec3 L, vec3 V, vec3 N, vec3 X, vec3 Y)
+{
+    float ndotv = max(0, dot(N, V));
+    float ndotl = max(0, dot(N, L));
+    float thetak = pow(ndotv, k - 1);
+
+    return cl * (1 - nondiff) * pow(ndotl, k) * thetak;
+
+    // This is a test with formula in wiki
+    // return cl * (1 - nondiff) * ndotv * (0.3 + ndotv * (0.93 - 0.23 * ndotv));
+}
