@@ -1,0 +1,57 @@
+analytic
+
+// Hapke-Lommel-Seeliger lunar surface BRDF ////////////////////////////////////
+// Szymon Rusinkiewicz's implementation, based on "A Theoretical photometric ///
+// function for the Lunar Surface", in Journal of Geophysical Research,vol.68 //
+// no.15, 1963 
+
+::begin parameters
+float nondiff 0 1 0.5
+float sden 0 1 0.5
+float fscat 0 1 0.1
+float refl 0 1 0.5
+color cl 0.5 0.5 0.5
+::end parameters
+
+::begin shader
+
+/*
+ * Szymon Rusinkiewicz
+ *
+ * brdf_hls.cc
+ * The Hapke/Lommel-Seeliger Lunar-surface BRDF with
+ * Sch?nberg backscattering and the Hapke retrodirective
+ * function.
+ *
+ * Hapke, Bruce. "A Theoretical Photometric Function for
+ * the Lunar Surface", in
+ * Journal of Geophysical Research, Vol.68, No.15, 1963
+ */
+
+const float EPS = 0.0001;
+const float PI_2 = 3.14159265358979323846 / 2;
+const float PI = PI_2 * 2;
+
+float eval(vec3 vin, vec3 vout, vec3 vn, float g, float f, float r)
+{
+    float cosalpha = clamp(dot(vin, vout), EPS, 1.0 - EPS);
+    float sinalpha = sqrt(1.0 - cosalpha * cosalpha);
+    float tanalpha = sinalpha / cosalpha;
+    float alpha = acos(cosalpha);
+
+    // effects of macroscopic roughness
+    float R = (alpha < PI_2 - EPS) ? 2 - tanalpha / 2 / g * (1 - exp(-g / tanalpha)) * (3 - exp(-g / tanalpha)) : 1;
+    // opposition effect
+    float one_minus_cos = 1 - cosalpha;
+    float S = 2.0 / 3 / PI * ((sinalpha + (PI - alpha) * cosalpha) / PI + f * one_minus_cos * one_minus_cos);
+
+    return r * R * S / (dot(vin, vn) + dot(vout, vn));
+}
+
+// Reference: https://agupubs.onlinelibrary.wiley.com/doi/pdf/10.1029/2005JE002625
+
+vec3 BRDF(vec3 L, vec3 V, vec3 N, vec3 X, vec3 Y)
+{
+    float cos_theta_r = clamp(dot(N, V), EPS, 1);
+    return cl * (1 - nondiff) * eval(L, V, N, sden, fscat, refl) * max(0, dot(L, N)) * PI;
+}
