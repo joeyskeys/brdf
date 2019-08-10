@@ -1,0 +1,47 @@
+analytic
+
+// Oren-Nayar generalization of Lambert's reflection model /////////////////////
+// implementation by Szymon Rusinkiewicz  //////////////////////////////////////
+// from http://unix.math2.us.edu.pl/~perry/mp/wyklBRDF.pdf 
+
+/*
+ * Oren and Nayar's generalization of Lambert's reflection
+ * model. The roughness parameter gives the standard deviation
+ * of angle orientatations of the presumed surface grooves.
+ * When roughness = 0, the model is Lambertian.
+ * */
+
+// NOTE: this is the "qualitative" model, without inter-reflections
+// NOTE: The above link has expired and no relating results to Szymon Rusinkiewicz's
+//       implementation found     
+
+::begin parameters
+float roughness 0 1 0.5
+float nondiff 0 1 0.5
+color cl 0.5 0.5 0.5
+::end parameters
+
+# shader code block
+
+::begin shader
+
+vec3 BRDF(vec3 L, vec3 V, vec3 N, vec3 X, vec3 Y)
+{
+    // surface roughness coefficients
+    float sigma2 = roughness * roughness;
+    float A = 1 - 0.5 * sigma2 / (sigma2 + 0.33);
+    float B = 0.45 * sigma2 / (sigma2 + 0.09);
+    float ndotv = dot(N, V);
+
+    // useful precomputed quantities
+    float theta_r = acos(ndotv); // angle between V and N
+    vec3 v_perp_n = normalize(V - N * ndotv); // part of V perpend to N
+
+    float cos_theta_i = dot(L, N);
+    float cos_phi_diff = dot(v_perp_n, (L - N * cos_theta_i));
+    float theta_i = acos(cos_theta_i);
+    float alpha = max(theta_i, theta_r);
+    float beta = min(theta_i, theta_r);
+
+    return cl * (1 - nondiff) * cos_theta_i * (A + B * max(0, cos_phi_diff) * sin(alpha) * tan(beta));
+}
