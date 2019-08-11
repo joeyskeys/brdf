@@ -42,7 +42,7 @@ analytic
  *
  * */
 
- // Reference: http://www.larrygritz.com/arman/shaders/ 
+// Reference: http://www.larrygritz.com/arman/shaders/ 
 
 ::begin parameters
 float sigma 0 1 0.5
@@ -58,7 +58,7 @@ color cl 0.5 0.5 0.5
 const float PI = 3.14159265358979323846;
 const float TWO_PI = PI * 2;
 
- vec3 BRDF(vec3 L, vec3 V, vec3 N, vec3 X, vec3 Y)
+vec3 BRDF(vec3 L, vec3 V, vec3 N, vec3 X, vec3 Y)
 {
     // store preset quantites whenever possible
     float cos_theta_r = dot(V, N);
