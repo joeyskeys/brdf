@@ -1,0 +1,24 @@
+analytic
+
+////////////////////////////////////////////////////////////////////////////////
+// James F. Blinn specular term (Phong-Blinn) //////////////////////////////////
+// from "Models of Light Reflection for Computer Synthesized Pictures", ////////
+// Computer Graphics, Vol.11, No.2, July 1977, page 192-198 (?) ////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+::begin parameters
+float size 0 20 0.5
+float nonspec 0 1 0.5
+color cl 0.5 0.5 0.5
+::end parameters
+
+# shader code block
+
+::begin shader
+
+vec3 BRDF(vec3 L, vec3 V, vec3 N, vec3 X, vec3 Y)
+{
+    vec3 H = normalize(L + V);
+    float ndoth = max(0, dot(N, H));
+    return cl * (1 - nonspec) * pow(max(0, ndoth), size) * max(0, dot(N, L));
+}
