@@ -1,0 +1,69 @@
+analytic
+
+////////////////////////////////////////////////////////////////////////////////
+// Greg Ward Larson's anisotropic model ////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// slightly tweaked to fit shrimp's structure //////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+/*
+ * Greg Ward Larson's anisotropic specular local illumination model.
+ * The derivation and formulae can be found in:  Ward, Gregory J.
+ * "Measuring and Modeling Anisotropic Reflection," ACM Computer
+ * Graphics 26(2) (Proceedings of Siggraph '92), pp. 265-272, July, 1992.
+ * Notice that compared to the paper, the implementation below appears to be
+ * missing an factor of 1/PI, and to hav an extra L.N term.
+ * This is not an error! It is because the paper's formula is for the BRDF,
+ * which is only part of the kernel of the light integral, whereas shaders
+ * must compute the result of the integral.
+ * 
+ * Inputs:
+ *  N - unit surface normal
+ *  V - unit viewing direction (from P toward the camera)
+ *  xdir - a unit tangent of the surface which defines the reference
+ *  direction for the anisotropy.
+ *  roughness - the apparent roughness of the surface in xdir.
+ *  yroughness - the roughness for the direction of the surface
+ *  tangent which is perpendicular to xdir.
+ *  */
+
+// Reference : https://cseweb.ucsd.edu/~ravir/6998/papers/p265-ward.pdf
+// Reference : https://pdfs.semanticscholar.org/330e/59117d7da6c794750730a15f9a178391b9fe.pdf
+// Brdf explorer cannot define vector parameter.
+
+::begin parameters
+// vector in 0 0 -1
+// vector xdir 1 0 0
+float xroughness 0 20 0.5
+float yroughness 0 20 0.5
+float nonspec 0 1 0.5
+color cl 0.5 0.5 0.5
+::end parameters
+
+# shader code block
+
+::begin shader
+
+const float EPS = 0.0001;
+
+vec3 BRDF(vec3 L, vec3 V, vec3 N, vec3 X, vec3 Y)
+{
+    float cos_theta_r = clamp(dot(N, V), EPS, 1);
+    vec3 x = xdir / xroughness;
+    vec3 y = cross(N, xdir) / yroughness;
+
+    float cos_theta_i = max(0, dot(L, N));
+    vec3 cout = vec3(0);
+    if (cos_theta_i > 0)
+    {
+        vec3 H = normalize(V + L);
+        float xdoth = dot(x, h);
+        float ydoth = dot(y, h);
+        float ndotH = max(0, dot(N, H));
+        float rho = exp(-2 * ((xdoth * xdoth) + (ydoth * ydoth)) / (1 + ndoth)) / sqrt(cos_theta_i * cos_theta_r);
+
+        cout = cl * (1 - nonspec) * cos_theta_i * rho;
+    }
+
+    return cout / (4 * xroughness * yroughness);
+}

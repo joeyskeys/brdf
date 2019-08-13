@@ -1,0 +1,32 @@
+analytic
+
+////////////////////////////////////////////////////////////////////////////////
+// Larry Gritz's LocIllumGlossy ////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// slightly tweaked to fit shrimp's structure //////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+/* LocIllumGlossy - possible replacement for specular(), with a more 
+ * uniformly bright core and sharper falloff. Good specular function for
+ * something made of glass or liquid, in which roughness = related to the
+ * size of the highlight, larger is bigger, and sharpness = 1 is infinitely
+ * sharp, 0 is very dull
+ * */
+
+::begin parameters
+float roughness 0 20 0.5
+float sharpness 0 1 0.5
+float nonspec 0 1 0.5
+color cl 0.5 0.5 0.5
+::end parameters
+
+# shader code block
+
+::begin shader
+
+vec3 BRDF(vec3 L, vec3 V, vec3 N, vec3 X, vec3 Y)
+{
+    float w = 0.18 * (1 - sharpness);
+    vec3 H = normalize(V + L);
+    return cl * (1 - nonspec) * smoothstep(0.72 - w, 0.72 + w, pow(max(0,  dot(N, H)), 1 / roughness));
+}

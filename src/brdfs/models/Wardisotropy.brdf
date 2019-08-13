@@ -1,0 +1,32 @@
+analytic
+
+////////////////////////////////////////////////////////////////////////////////
+// Variation on Greg Ward's isotropic specular /////////////////////////////////
+// Note that you can just pass identical values to x and y anisotropy, in the //
+// Ward anisotropic shader, and get the same results, altough at a slight //////
+// extra expense. //////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+::begin parameters
+float roughness 0 20 0.5
+float nonspec 0 1 0.5
+color cl 0.5 0.5 0.5
+::end parameters
+
+# shader code block
+
+::begin shader
+
+// Check Larry Gritz's site http://www.larrygritz.com/arman/shaders/locillum.h
+
+vec3 BRDF(vec3 L, vec3 V, vec3 N, vec3 X, vec3 Y)
+{
+    float ndotv = max(0, dot(N, V));
+    float m2 = roughness * roughness;
+    float ndotl = max(0, dot(N, L));
+    vec3 H = normalize(L + V);
+    float ndoth = max(0, dot(N, H));
+    float c2 = ndoth * ndoth;
+    float expfactor = exp((c2 - 1) / (c2 * m2));
+    return cl * (1 - nonspec) * (sqrt(ndotl) * expfactor / (4 * m2 * sqrt(ndotv)));
+}
