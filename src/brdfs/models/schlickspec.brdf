@@ -1,0 +1,28 @@
+analytic
+
+////////////////////////////////////////////////////////////////////////////////
+// Christophe Schlick isotropic BRDF ///////////////////////////////////////////// based on his paper, 'An inexpensive BRDF model for physically based /////////
+// rendering, Eurographics'94, published in Computer Graphics Forum, v13, n3 ///
+// p199-162, September 1994. ///////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+::begin parameters
+float roughness 0 1 0.5
+float nonspec 0 1 0.5
+color cl 0.5 0.5 0.5
+::end parameters
+
+# shader code block
+
+::begin shader
+
+vec3 BRDF(vec3 L, vec3 V, vec3 N, vec3 X, vec3 Y)
+{
+    float Nr = 1 / (roughness * roughness);
+    vec3 Rn = normalize(reflect(-L, N));
+
+    float rdotv = max(0, dot(Rn, V));
+    float coeff = rdotv / (Nr - Nr * rdotv + rdotv);
+
+    return cl * (1 - nonspec) * coeff * max(0, dot(N, L));
+}
