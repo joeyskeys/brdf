@@ -52,11 +52,14 @@ infringement.
 #include <QMenu>
 #include <QFileDialog>
 #include <QString>
+#include <QVector3D>
+#include <QVector4D>
 #include <stdio.h>
 #include <string.h>
 #include "ParameterGroupWidget.h"
 #include "FloatVarWidget.h"
 #include "ColorVarWidget.h"
+#include "VectorVarWidget.h"
 #include "BRDFAnalytic.h"
 #include "ParameterWindow.h"
 #include "Paths.h"
@@ -239,6 +242,8 @@ BRDFBase* ParameterGroupWidget::getUpdatedBRDF()
     int floatIndex = 0;
     int boolIndex = 0;
 	int colorIndex = 0;
+    int vec3Index = 0;
+    int vec4Index = 0;
 
     for( int i = 0; i < (int)brdfParamWidgets.size(); i++ )
     {
@@ -268,6 +273,24 @@ BRDFBase* ParameterGroupWidget::getUpdatedBRDF()
             ColorVarWidget* c = dynamic_cast<ColorVarWidget*>(brdfParamWidgets[i].widget);
             if( c ) value = c->getValue();
             brdf->setColorParameterValue( colorIndex++, value.redF(), value.greenF(), value.blueF() );  
+        }
+
+        // vec3s
+        else if( brdfParamWidgets[i].type == BRDF_VAR_VEC3 )
+        {
+            QVector3D value = QVector3D(0, 0, 0);
+            Vec3VarWidget* v = dynamic_cast<Vec3VarWidget*>(brdfParamWidgets[i].widget);
+            if( v ) value = v->getValue();
+            brdf->setVec3ParameterValue( vec3Index++, value.x(), value.y(), value.z() );
+        }
+
+        // vec4s
+        else if( brdfParamWidgets[i].type == BRDF_VAR_VEC4 )
+        {
+            QVector4D value = QVector4D(0, 0, 0, 0);
+            Vec4VarWidget* v = dynamic_cast<Vec4VarWidget*>(brdfParamWidgets[i].widget);
+            if( v ) value = v->getValue();
+            brdf->setVec4ParameterValue( vec4Index++, value.x(), value.y(), value.z(), value.w() );
         }
     }
 
@@ -328,6 +351,7 @@ void ParameterGroupWidget::addParameterWidgets()
 
     // loop through and add all the parameters to the list
     int float_index = 0, bool_index = 0, color_index = 0;
+    int vec3_index = 0, vec4_index = 0;
     for( int i = 0; i < brdf->getParameterCount(); i++ )
     {
         switch (brdf->getParameterType(i)) {
@@ -361,6 +385,28 @@ void ParameterGroupWidget::addParameterWidgets()
                 connect(cv, SIGNAL(valueChanged()), this, SLOT(paramChanged()));
                 brdfParamWidgets.push_back( BRDFParamWidget(BRDF_VAR_COLOR, cv) );
                 containerLayout->addWidget( cv );
+            }
+            break;
+
+            case BRDF_VAR_VEC3:
+            {
+                const brdfVec3Param* p = brdf->getVec3Parameter( vec3_index++ );
+                Vec3VarWidget* vv = new Vec3VarWidget(QString(p->name.c_str()),
+                                                      p->currentVal[0], p->currentVal[1], p->currentVal[2]);
+                connect(vv, SIGNAL(valueChanged()), this, SLOT(paramChanged()));
+                brdfParamWidgets.push_back( BRDFParamWidget(BRDF_VAR_VEC3, vv) );
+                containerLayout->addWidget( vv );
+            }
+            break;
+
+            case BRDF_VAR_VEC4:
+            {
+                const brdfVec4Param* p = brdf->getVec4Parameter( vec4_index++ );
+                Vec4VarWidget* vv = new Vec4VarWidget(QString(p->name.c_str()),
+                                                      p->currentVal[0], p->currentVal[1], p->currentVal[2], p->currentVal[3]);
+                connect(vv, SIGNAL(valueChanged()), this, SLOT(paramChanged()));
+                brdfParamWidgets.push_back( BRDFParamWidget(BRDF_VAR_VEC4, vv) );
+                containerLayout->addWidget( vv );
             }
             break;
         }

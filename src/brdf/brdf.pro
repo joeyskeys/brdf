@@ -29,6 +29,7 @@ SOURCES = \
     BRDFMeasuredAniso.cpp \
     BRDFMeasuredMERL.cpp \
     ColorVarWidget.cpp \
+    VectorVarWidget.cpp \
     FloatVarWidget.cpp \
     DGLFrameBuffer.cpp \
     DGLShader.cpp \

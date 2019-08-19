@@ -66,6 +66,8 @@ class BRDFBase;
 #define BRDF_VAR_FLOAT 0
 #define BRDF_VAR_BOOL 1
 #define BRDF_VAR_COLOR 2
+#define BRDF_VAR_VEC3 3
+#define BRDF_VAR_VEC4 4
 
 
 #define NUM_SHADERS                 10
@@ -104,6 +106,19 @@ struct brdfColorParam
     float currentVal[3];
 };
 
+struct brdfVec3Param
+{
+    std::string name;
+    float defaultVal[3];
+    float currentVal[3];
+};
+
+struct brdfVec4Param
+{
+    std::string name;
+    float defaultVal[4];
+    float currentVal[4];
+};
 
 struct brdfPackage
 {
@@ -177,6 +192,14 @@ public:
     brdfColorParam* getColorParameter( int paramIndex );
     void setColorParameterValue( int paramIndex,float r, float g, float b  );
 
+    int getVec3ParameterCount();
+    brdfVec3Param* getVec3Parameter( int paramIndex );
+    void setVec3ParameterValue( int paramIndex, float x, float y, float z );
+
+    int getVec4ParameterCount();
+    brdfVec4Param* getVec4Parameter( int paramIndex );
+    void setVec4ParameterValue( int paramIndex, float x, float y, float z, float w );
+
     DGLShader* getUpdatedShader( int shaderType, brdfPackage* = NULL );
     void disableShader( int shaderType );
 
@@ -192,6 +215,8 @@ protected:
     virtual void addFloatParameter( std::string name, float min, float max, float value );
     virtual void addBoolParameter( std::string name, bool value );
     virtual void addColorParameter( std::string name, float r, float g, float b );
+    virtual void addVec3Parameter( std::string name, float x, float y, float z );
+    virtual void addVec4Parameter( std::string name, float x, float y, float z, float w );
 
     virtual void initGL() { initializedGL = true; }
 
@@ -217,6 +242,8 @@ protected:
     std::vector<brdfFloatParam> floatParameters;
     std::vector<brdfBoolParam> boolParameters;
     std::vector<brdfColorParam> colorParameters;
+    std::vector<brdfVec3Param> vec3Parameters;
+    std::vector<brdfVec4Param> vec4Parameters;
     std::string name;
 
 private:

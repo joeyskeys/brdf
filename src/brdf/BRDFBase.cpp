@@ -241,6 +241,33 @@ void BRDFBase::addColorParameter( std::string name, float r, float g, float b )
     parameterTypes.push_back( BRDF_VAR_COLOR );
 }
 
+void BRDFBase::addVec3Parameter( std::string name, float x, float y, float z )
+{
+    brdfVec3Param param;
+
+    param.name = name;
+    param.currentVal[0] = param.defaultVal[0] = x;
+    param.currentVal[1] = param.defaultVal[1] = y;
+    param.currentVal[2] = param.defaultVal[2] = z;
+
+    vec3Parameters.emplace_back( param );
+    parameterTypes.emplace_back( BRDF_VAR_VEC3 );
+}
+
+void BRDFBase::addVec4Parameter( std::string name, float x, float y, float z, float w )
+{
+    brdfVec4Param param;
+
+    param.name = name;
+    param.currentVal[0] = param.defaultVal[0] = x;
+    param.currentVal[1] = param.defaultVal[1] = y;
+    param.currentVal[2] = param.defaultVal[2] = z;
+    param.currentVal[3] = param.defaultVal[3] = w;
+
+    vec4Parameters.emplace_back( param );
+    parameterTypes.emplace_back( BRDF_VAR_VEC4 );
+}
+
 bool BRDFBase::processParameterLine( std::string line )
 {
     std::stringstream os(line);
@@ -281,6 +308,31 @@ bool BRDFBase::processParameterLine( std::string line )
         os >> b;
 
         addColorParameter( name, r, g, b );
+    }
+    else if( token == "vec3" )
+    {
+        std::string name;
+        float x, y, z;
+
+        os >> name;
+        os >> x;
+        os >> y;
+        os >> z;
+
+        addVec3Parameter( name, x, y, z );
+    }
+    else if( token == "vec4" )
+    {
+        std::string name;
+        float x, y, z, w;
+
+        os >> name;
+        os >> x;
+        os >> y;
+        os >> z;
+        os >> w;
+
+        addVec4Parameter( name, x, y, z, w );
     }
     else
         return false;
@@ -353,6 +405,10 @@ std::string BRDFBase::loadShaderFromFile( std::string filename, std::string chun
                 completeShader += "uniform bool " + boolParameters[i].name + ";\n";
             for( int i = 0; i < (int)colorParameters.size(); i++ )
                 completeShader += "uniform vec3 " + colorParameters[i].name + ";\n";
+            for( int i = 0; i < (int)vec3Parameters.size(); i++ )
+                completeShader += "uniform vec3 " + vec3Parameters[i].name + ";\n";
+            for( int i = 0; i < (int)vec4Parameters.size(); i++ )
+                completeShader += "uniform vec4 " + vec4Parameters[i].name + ";\n";
         }
         else if( chunkToInsert.length() && line == "::INSERT_BRDF_FUNCTION_HERE::" )
         {
@@ -493,6 +549,54 @@ int BRDFBase::getColorParameterCount()
 }
 
 
+void BRDFBase::setVec3ParameterValue( int index, float x, float y, float z )
+{
+    if( index >= 0 && index <= (int)vec3Parameters.size() )
+    {
+        vec3Parameters[index].currentVal[0] = x;
+        vec3Parameters[index].currentVal[1] = y;
+        vec3Parameters[index].currentVal[2] = z;
+    }
+}
+
+
+brdfVec3Param* BRDFBase::getVec3Parameter( int index )
+{
+    if( index >= 0 && index < (int)vec3Parameters.size() )
+        return &vec3Parameters[index];
+    return nullptr;
+}
+
+
+int BRDFBase::getVec3ParameterCount()
+{
+    return (int)vec3Parameters.size();
+}
+
+
+void BRDFBase::setVec4ParameterValue( int index, float x, float y, float z, float w )
+{
+    if( index >= 0 && index <= (int)vec4Parameters.size() )
+    {
+        vec4Parameters[index].currentVal[0] = x;
+        vec4Parameters[index].currentVal[0] = y;
+        vec4Parameters[index].currentVal[0] = z;
+        vec4Parameters[index].currentVal[0] = w;
+    }
+}
+
+brdfVec4Param* BRDFBase::getVec4Parameter( int index )
+{
+    if( index >= 0 && index < (int)vec4Parameters.size() )
+        return &vec4Parameters[index];
+    return nullptr;
+}
+
+int BRDFBase::getVec4ParameterCount()
+{
+    return (int)vec4Parameters.size();
+}
+
 
 void BRDFBase::adjustShaderPreRender( DGLShader* shader )
 {
@@ -510,6 +614,16 @@ void BRDFBase::adjustShaderPreRender( DGLShader* shader )
     {
         shader->setUniformFloat( (char*)colorParameters[i].name.c_str(),  colorParameters[i].currentVal[0],
                                         colorParameters[i].currentVal[1], colorParameters[i].currentVal[2] );
+    }
+
+    for( int i = 0; i < (int)vec3Parameters.size(); i++ )
+    {
+        shader->setUniformFloatArray( (char*)vec3Parameters[i].name.c_str(), 3, 1, vec3Parameters[i].currentVal );
+    }
+
+    for( int i = 0; i < (int)vec4Parameters.size(); i++ )
+    {
+        shader->setUniformFloatArray( (char*)vec4Parameters[i].name.c_str(), 4, 1, vec4Parameters[i].currentVal );
     }
 }
 
@@ -565,6 +679,35 @@ void BRDFBase::syncParametersIntoBRDF( BRDFBase* newBRDF )
             }
         }
     }
+
+    for ( int i = 0; i < (int)newBRDF->vec3Parameters.size(); i++ )
+    {
+        for( int j = 0; j < (int)vec3Parameters.size(); j++ )
+        {
+            if( newBRDF->vec3Parameters[i].name == vec3Parameters[j].name )
+            {
+                // we found a match - copy the old value to the new BRDF
+                newBRDF->vec3Parameters[i].currentVal[0] = vec3Parameters[j].currentVal[0];
+                newBRDF->vec3Parameters[i].currentVal[1] = vec3Parameters[j].currentVal[1];
+                newBRDF->vec3Parameters[i].currentVal[2] = vec3Parameters[j].currentVal[2];
+            }
+        }
+    }
+
+    for ( int i = 0; i < (int)newBRDF->vec4Parameters.size(); i++ )
+    {
+        for( int j = 0; j < (int)vec4Parameters.size(); j++ )
+        {
+            if( newBRDF->vec4Parameters[i].name == vec4Parameters[j].name )
+            {
+                // we found a match - copy the old value to the new BRDF
+                newBRDF->vec4Parameters[i].currentVal[0] = vec4Parameters[j].currentVal[0];
+                newBRDF->vec4Parameters[i].currentVal[1] = vec4Parameters[j].currentVal[1];
+                newBRDF->vec4Parameters[i].currentVal[2] = vec4Parameters[j].currentVal[2];
+                newBRDF->vec4Parameters[i].currentVal[3] = vec4Parameters[j].currentVal[3];
+            }
+        }
+    }
 }
 
 
@@ -589,6 +732,17 @@ void BRDFBase::saveParamsFile( const char* filename )
                                              colorParameters[i].currentVal[0],
                                              colorParameters[i].currentVal[1],
                                              colorParameters[i].currentVal[2] );
+    for( int i = 0; i < (int)vec3Parameters.size(); i++ )
+        fprintf( out, "vec3 %s %f %f %f\n", vec3Parameters[i].name.c_str(),
+                                            vec3Parameters[i].currentVal[0],
+                                            vec3Parameters[i].currentVal[1],
+                                            vec3Parameters[i].currentVal[2] );
+    for( int i = 0; i < (int)vec4Parameters.size(); i++ )
+        fprintf( out, "vec4 %s %f %f %f %f\n", vec4Parameters[i].name.c_str(),
+                                              vec4Parameters[i].currentVal[0],
+                                              vec4Parameters[i].currentVal[1],
+                                              vec4Parameters[i].currentVal[2],
+                                              vec4Parameters[i].currentVal[3] ); 
 
     fprintf( out, "::end parameters\n" );
     fclose( out );
