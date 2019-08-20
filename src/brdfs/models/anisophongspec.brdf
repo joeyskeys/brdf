@@ -31,6 +31,8 @@ analytic
  *   try to raytrace the environment if there are samples (envsamp > 0)
  * envsamp: number of samples to use when sampling the environment
  * */
+
+ // Reference : https://www.cs.utah.edu/~shirley/papers/jgtbrdf.pdf
  
 ::begin parameters
 float nu 0 10 0.5
