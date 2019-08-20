@@ -1,0 +1,79 @@
+analytic
+
+////////////////////////////////////////////////////////////////////////////////
+// Anisotropic version of Cristophe Schlick's BRDF, with geometric /////////////
+// attenuation, based on his paper: 'An inexpensive BRDF model for /////////////
+// physically based rendering', Eurographics'94, published in Computer /////////
+// Graphics Forum, v13, n3, p199-162, September 1994. //////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+// Due to the vector parameter, it's not working for now
+
+::begin parameters
+float roughness 0 1 0.5
+float isotropy 0 1 0.5
+float ior 0 1 0.5
+float nonspec 0 1 0.5
+vec3 dir 1 0 0
+color cl 0.5 0.5 0.5
+::end parameters
+
+# shader code block
+
+::begin shader
+
+// Schlick's fresnel approximation
+float schlickfresnel(vec3 N, vec3 V, float ior)
+{
+    float kr = (ior - 1.0) / (ior + 1.0);
+    kr *= kr;
+    return kr + (1.0 - kr) * pow(1.0 - max(0, dot(N, V)), 5);
+}
+
+// Approximation of the Smith geometric attenuation function
+// G(v) = v / (σ - σv + v )
+float sgeoattenuation(float costheta, float roughness)
+{
+    float g1 = roughness - roughness * costheta + costheta;
+    return costheta / g1;
+}
+
+// Angle dependence
+// A(w) = sqrt( ψ / (ψ² - ψ²w² + w²)
+float angledependence(float cosbeta, float isotropy)
+{
+    float i2 = isotropy * isotropy;
+    float cosbeta2 = cosbeta * cosbeta;
+    return sqrt(isotropy / (i2 - i2 * cosbeta2 + cosbeta2));
+}
+
+// Zenith dependence
+// Z(t) = σ / (1 + σt² - t²)²
+float zenithdependence(float cosbeta, float roughness)
+{
+    float cosbeta2 = cosbeta * cosbeta;
+    float Zdenom = (1 + roughness * cosbeta2 - cosbeta2);
+    return roughness / (Zdenom * Zdenom);
+}
+
+vec3 BRDF(vec3 L, vec3 V, vec3 N, vec3 X, vec3 Y)
+{
+    vec3 xdir = normalize(cross(N, dir));
+    float costheta = max(0, dot(V, N));
+
+    vec3 H = normalize(V + L);
+    float cospsi = dot(L, N);
+    float cosbeta = dot(H, xdir);
+
+    // self-shadowing, without reeemission
+    float G = sgeoattenuation(costheta, roughness) * sgeoattenuation(cospsi, roughness);
+    // anisotropy
+    float A = angledependence(cosbeta, isotropy);
+    float Z = zenithdependence(dot(N, H), roughness);
+    float F = schlickfresnel(L, H, ior);
+
+    // D(t,v,v',w) = G(v)G(v')Z(t)A(w) / (4πvv') + (1 -G(v)G(v')/π *A
+    float D = F * (Z * A * G / (4 * costheta) + (cospsi * A * (1 - G)));
+
+    return cl * (1 - nonspec) * D;
+}

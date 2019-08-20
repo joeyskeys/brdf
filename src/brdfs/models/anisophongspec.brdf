@@ -1,0 +1,75 @@
+analytic
+
+////////////////////////////////////////////////////////////////////////////////
+// Ashikhmin-Shirley specular term /////////////////////////////////////////////
+// based on Peter Stuart's implementation, original implementation further  ////
+// below. Read notes about this model's diffuse term earlier in this header ////
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// Model from "An anisotropic Phong BRDF model", by Michael Ashikhmin and //////
+// Peter Shirley. //////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+/* 
+ * ashshir.sl
+ * Simple surface using Ashikmin-Shirley BRDF
+ * Peter Stuart
+ * $Id: ashshir.sl,v 1.4 2003/05/05 05:22:41 ophi Exp $
+ * description: Ashikmin and Shirley BRDF lighting model as described
+ * in "An Anisotropic Phong Light Reflection Model." Most of the work
+ * is done in ashShirModel.h by two functions - one for dealing with
+ * direct lighting, and the other for dealing with environment lighting.
+ *
+ * ---- surface parameters ----------
+ * rd: diffuse reflectance
+ * rs: specular reflectance
+ * nu: specular exponent along xdir
+ * nv: specular exponent perpendicular to xdir
+ * refl: amount of reflection to use
+ * envname: name of environment map to use. If this is "" the shader will
+ *   try to raytrace the environment if there are samples (envsamp > 0)
+ * envsamp: number of samples to use when sampling the environment
+ * */
+ 
+::begin parameters
+float nu 0 10 0.5
+float nv 0 10 0.5
+float ior 1 5 1.5
+vec3 vu 1 0 0
+vec3 vv 1 0 0
+float nonspec 0 1 0.5
+color cl 0.5 0.5 0.5
+::end parameters
+
+# shader code block
+
+::begin shader
+
+const float PI = 3.14159265358979323846;
+
+float schlickfresnel(vec3 N, vec3 V, float ior)
+{
+    float kr = (ior - 1.0) / (ior + 1.0);
+    kr *= kr;
+    return kr + (1.0 - kr) * pow(1.0 - max(0, dot(N, V)), 5);
+}
+
+vec3 BRDF(vec3 L, vec3 V, vec3 N, vec3 X, vec3 Y)
+{
+    float ndotv = max(0, dot(N, V));
+    vec3 H = normalize(L + V);
+    float ndoth = max(0, dot(N, H));
+    float ndotl = max(0, dot(N, L));
+
+    float speccont = sqrt((nu + 1) * (nv + 1) / (8 * PI));
+    float hdotvu = dot(H, vu);
+    float nu2 = nu * hdotvu * hdotvu;
+    float hdotvv = dot(H, vv);
+    float nv2 = nv * hdotvv * hdotvv;
+    float nunv = (nu2 + nv2) / (1 - ndoth * ndoth);
+    float nh = pow(ndoth, nunv);
+    float nhmax = ndoth * max(ndotl, ndotv);
+
+    return cl * (1 - nonspec) * ndotl * (speccont * (nh / nhmax)) * schlickfresnel(N, V, ior);
+}
