@@ -1,0 +1,73 @@
+analytic
+
+////////////////////////////////////////////////////////////////////////////////
+// Stephen Westin's brushed metal //////////////////////////////////////////////
+// from The RenderMan Repository / http://www.renderman.org ////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// slightly tweaked for shrimp use, and we need the specular term only /////////
+////////////////////////////////////////////////////////////////////////////////
+
+// renamed to SHW_brushedmetal for RMR -- tal@SpamSucks_cs.caltech.edu
+
+/*
+ * brushdemetal.sl -- brushed metal (anisotropic)
+ *
+ * DESCRIPTION:
+ *   An attempt at an anisotropic surface.
+ *   The surface is idealized as a bed of slightly rough parallel
+ *   cylinders. For the cylinders,
+ *   I use Kajiya's Phong-like highlight from a cylinder (SIGGRAPH '89),
+ *   coupled with an arbitrary shadowing/masking function. Direction
+ *   of anisotropy (i.e. the axis of the cylinders) is simply the "U"
+ *   direction of patch parameter.
+ *
+ * PARAMETERS:
+ *   Ka, Kd, Ks, roughness, specularcolor - work just like the plastic
+ *
+ * ANTIALIASING: should antialias itself fairly well
+ *
+ * AUTHOR: written by Stephen H. Westin, Ford Motor Company Corporate Design
+ *
+ * last modified  02 December 1995 S. H. Westin
+ *
+ *
+ * HISTORY:
+ *   12/24/98 tal -- Updated to newer rman syntax
+ *
+ * */
+
+ // Reference : https://stephen-westin.com/
+
+ # parameter block
+
+::begin parameters
+float roughness 0 1 0.1
+float nonspec 0 1 0.5
+vec3 vdir 0 1 0
+color cl 0.5 0.5 0.5
+::end parameters
+
+# shader code block
+
+::begin shader
+
+vec3 BRDF(vec3 L, vec3 V, vec3 N, vec3 X, vec3 Y)
+{
+    float costheta = max(0, dot(N, V));
+
+    // "Specular" highlight in the Phong sense: directional-diffuse
+    float cos_eye = dot(vdir, V);
+    float sin_eye = sqrt(max(0, 1.0 - cos_eye * cos_eye));
+
+    vec3 H = normalize(L + V);
+    float cos_light = dot(vdir, L);
+    float sin_light = sqrt(max(0, 1 - cos_light * cos_light));
+
+    // Anisotropic scale factor
+    float aniso = max(cos_light * cos_eye + sin_light * sin_eye, 0.0);
+
+    // Phong-like shadow/masking function
+    float shad = costheta * max(0, dot(N, L));
+
+    return cl * (1 - nonspec) * pow(aniso, 1.0 / roughness) * shad;
+}
