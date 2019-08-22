@@ -1,0 +1,99 @@
+analytic
+
+////////////////////////////////////////////////////////////////////////////////
+// Peter Stuart's implementation of the Ashikhmin-Shirley BRDF. ////////////////
+// includes environment sampling. //////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// slightly tweaked to fit shrimp's structure //////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+/*
+ * Ashkihmin-Shirley BRDF
+ * Peter Stuart
+ * $Id: ash-shir.sl,v 1.9 2003/05/05 05:22:41 ophi Exp $
+ * description: Ashikmin and Shirley BRDF lighting model as described
+ * in "An Anisotropic Phong Light Reflection Model." A local illumination
+ * version and an environment map version are both included. The environment
+ * map version uses the importance sampling as described in the paper to reduce
+ * variance.
+ * 
+ * ---- local illumination surface parameters ----------
+ * N: normal direction
+ * V: view direction
+ * xdir: direction of anisotropy - can be primary or secondary
+ * rd: diffuse reflectance
+ * rs: specular reflectance
+ * nu: specular exponent along xdir
+ * nv: specular exponent perpendicular to xdir
+ *
+ * ---- environment illumination surface parameters ----------
+ * N: normal direction
+ * V: view direction
+ * xdir: direction of anisotropy - can be primary or secondary
+ * rd: diffuse reflectance
+ * rs: specular reflectance
+ * nu: specular exponent along xdir
+ * nv: specular exponent perpendicular to xdir
+ * samples: number of samples to take of the environment map
+ * envmap: name of environment map
+ * */
+
+ // Reference : https://www.cs.utah.edu/~shirley/papers/jgtbrdf.pdf
+
+ # parameter block
+
+::begin parameters
+float Kd 0 5 0.1
+float Ks 0 5 0.5
+float nu 0 100 0.5
+float nv 0 100 0.5
+float nondiff 0 1 0.5
+float nonspec 0 1 0.1
+vec3 xdir 0 1 0
+color cdiff 0.5 0.5 0.5
+color cspec 0.9 0.9 0.9
+color cl 0.5 0.5 0.5
+::end parameters
+
+# shader code block
+
+::begin shader
+
+/* ---- fast fresnel --------
+ * H: vector halfway between V and L ((V+L) / 2)
+ * V: view vector (-I/|I|)
+ * f0: reflectance at normal incidence
+ *
+ * Schlick's approximation to the fresnel function
+ * */
+
+float fastFresnel(vec3 H, vec3 V, float f0)
+{
+    return f0 + (1 - f0) * pow(1 - max(0, dot(H, V)), 5);
+}
+
+vec3 BRDF(vec3 L, vec3 V, vec3 N, vec3 X, vec3 Y)
+{
+    float ndotv = max(0, dot(N, V));
+    vec3 u_dir = xdir;
+    vec3 v_dir = cross(N, xdir);
+
+    float diffcont = (28 * Kd / 23) * (1 - Ks) * (1 - pow(1 - ndotv / 2, 5));
+    float speccont = sqrt(nu + 1) * (nv + 1) / 8;
+
+    float ndotl = max(0, dot(N, L));
+    float rho_d = diffcont * (1 - pow(1 - ndotv / 2, 5));
+    
+    vec3 H = normalize(V + L);
+    float ndoth = max(0, dot(N, H));
+    float hdotudir = max(0, dot(H, u_dir));
+    float hdotvdir = max(0, dot(H, v_dir));
+    float nunv2 = (nu * hdotudir * hdotudir) + (nv * hdotvdir * hdotvdir) / ( 1 - ndoth * ndoth);
+    float rho_s = speccont * pow(ndoth, nunv2) / (ndoth * max(ndotv, ndotl)) * fastFresnel(H, V, Ks);
+    float maxndotl = max(0, ndotl);
+
+    vec3 aov_diffuse = cl * (1 - nondiff) * rho_d * maxndotl;
+    vec3 aov_specular = cl * (1 - nonspec) * rho_s * maxndotl;
+
+    return cdiff * aov_diffuse + cspec * aov_specular;
+}
