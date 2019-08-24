@@ -1,0 +1,70 @@
+analytic
+
+////////////////////////////////////////////////////////////////////////////////
+// Stephen H. Westin's velvet shader ///////////////////////////////////////////
+// from The RenderMan Repository , http://www.renderman.org ////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// slightly tweaked to fit shrimp's structure //////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+/*
+ * velvet.sl -- velvet
+ *
+ * DESCRIPTION:
+ *   An attempt at a velvet surface.
+ *   This phenomenological model contains three compnents:
+ *   - A retroreflective lobe (back toward the light source)
+ *   - Scattering near the horizon, regardless of incident direction
+ *   - A diffuse color
+ * 
+ * PARAMETERS:
+ *   Ks:	controls retroreflective lobe
+ *   Kd:	scales diffuse color
+ *   Ka:	ambient component (affects diffuse color only)
+ *   sheen:	color of retroreflective lobe and horizon scattering
+ *   roughness: shininess of fabric (controls retroreflection only)
+ *
+ * ANTIALIASING: should antialias itself fairly well
+ *
+ * AUTHOR: written by Stephen H. Westin, Ford Motor Company
+ *
+ * HISTORY:
+ * 	2001.02.01	westin AT graphics DOT cornell DOT edu 
+ *			Fixed retroreflection lobe (sign error); added
+ *			"backscatter" parameter to control it; added
+ *			"edginess" parameter to control horizon scatter;
+ *			defined SQR()
+ *
+ * prev modified  28 January 1997 S. H. Westin
+ * */
+
+::begin parameters
+float Ks 0 1 0.5
+float backscatter 0 1 0.5
+float edginess 0 1 0.5
+float roughness 0 1 0.5
+float nonspec 0 1 0.5
+color sheen 0.5 0.5 0.5
+color cl 0.5 0.5 0.5
+::end parameters
+
+# shader code block
+
+::begin shader
+
+vec3 BRDF(vec3 L, vec3 V, vec3 N, vec3 X, vec3 Y)
+{
+    float ndotv = max(0, dot(N, V));
+
+    // Retroreflective lobe
+    float cosine = max(0, dot(L, V));
+    vec3 rlobe = cl * sheen * backscatter * pow(cosine, 1 / roughness);
+
+    // Horizon scattering
+    float sine = sqrt(1.0 - ndotv * ndotv);
+    vec3 horizonscatter = cl * (1 - nonspec) * sheen * max(0, dot(L, N)) * pow(sine, edginess);
+
+    vec3 aov_scattering = Ks * rlobe;
+    vec3 aov_rimlighting = Ks * horizonscatter;
+    return aov_scattering + aov_rimlighting;
+}
