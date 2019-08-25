@@ -1,0 +1,72 @@
+analytic
+
+////////////////////////////////////////////////////////////////////////////////
+// based on ATI's paper 'Hair Rendering and Shading', by Thorsten Scheuermann //
+// 3D application research group, ATI research Inc. ////////////////////////////
+// this is a hair rendering technique originally made for polygon hair models //
+// a mix of Kajiya-Kay hair shader model, and Marscher's model, presented at  //
+// Siggraph2003 ////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// Reference : http://web.engr.oregonstate.edu/~mjb/cs519/Projects/Papers/HairRendering.pdf
+
+::begin parameters
+float Ka 0 1 0.5
+float Kd 0 1 0.5
+float Ks 0 1 0.5
+float shift 0 1 0.5
+float shift2 0 1 0.5
+float exponent 0 1 0.5
+float exponent2 0 1 0.5
+float specmask 0 1 0.5
+float v 0 1 0.5
+float ambient 0 1 0.1
+float nondiff 0 1 0.5
+float nonspec 0 1 0.5
+color cdiff 0.5 0.5 0.5
+color cbase 0.2 0.2 0.2
+color ctip 0.3 0.3 0.3
+color cspec 0.8 0.8 0.8
+color cspec2 0.9 0.9 0.9
+color cl 0.5 0.5 0.5
+::end parameters
+
+# shader code block
+
+::begin shader
+
+// shifting specular highlights along lenght of hair
+vec3 shifttangent(vec3 T, vec3 N, float shift)
+{
+    vec3 shiftedt = T + shift * N;
+    return normalize(shiftedt);
+}
+
+// Specular strand lighting
+float strandspecular(vec3 T, vec3 V, vec3 L, float exponent)
+{
+    vec3 H = normalize(L + V);
+    float dotth = dot(T, H);
+    float sinth = sqrt(max(0, 1 - dotth * dotth));
+    float diratten = smoothstep(-1, 0, dotth);
+    return diratten * pow(sinth, exponent);
+}
+
+vec3 BRDF(vec3 L, vec3 V, vec3 N, vec3 X, vec3 Y)
+{
+    vec3 T = normalize(X);
+    vec3 t1 = vec3(shifttangent(T, N, shift - 0.5));
+    vec3 t2 = vec3(shifttangent(T, N, shift2 - 0.5));
+    float dottin = dot(T, V);
+
+    // diffuse
+    vec3 Cdd = cl * (1 - nondiff) * clamp(mix(0.25, 1.0, max(0, dot(N, L))), 0 , 1); 
+    // specular
+    vec3 Css = cl * (1 - nonspec) * (cspec * strandspecular(t1, V, L, exponent) + cspec2 * specmask * strandspecular(t2, V, L, exponent2));
+
+    vec3 aov_surfacecolor = mix(cbase, ctip, v);
+    vec3 aov_ambient = Ka * vec3(ambient);
+    vec3 aov_diffuse = Kd * Cdd;
+    vec3 aov_specular = Ks * Css;
+
+    return aov_surfacecolor * (aov_ambient + aov_diffuse) + aov_specular;
+}
