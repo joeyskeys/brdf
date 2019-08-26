@@ -1,0 +1,55 @@
+analytic
+
+////////////////////////////////////////////////////////////////////////////////
+// Hair shader, Kajiya-Kay model, based on Mario Marengo's work, from //////////
+// http://forums.odforce.net/index.php?showtopic=2208&st=180 ///////////////////
+// slightly tweaked for shrimp /////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+::begin parameters
+float Ka 0 1 0.2
+float Kd 0 1 0.4
+float Ks 0 1 0.9
+float v 0 1 0.5
+float roughness   0 1 0.8
+float nondiff 0 1 0.5
+float nonspec 0 1 0.1
+color ambient 0.1 0.1 0.1
+color cdd 0.4 0.4 0.4
+color cbase 0.5 0.5 0.6
+color ctip 0.7 0.3 0.3
+color css 0.9 0.9 0.9
+color cdiff 0.8 0.8 0.8
+color cl 0.5 0.5 0.5
+::end parameters
+
+# shader code block
+
+::begin shader
+
+vec3 BRDF(vec3 L, vec3 V, vec3 N, vec3 X, vec3 Y)
+{
+    /* We're going to need dPdv for direction, P for the illuminance
+	 * construct, and the v coordinate for the color blend in the color
+	 * contribution. */
+     vec3 T = normalize(X);
+
+    float dottin = dot(T, V);
+    float dottl = dot(T, L);
+    float sdottl = sqrt(max(0, 1 - dottl * dottl));
+
+    // diffuse term
+    vec3 cdiff = cl * (1 - nondiff) * sdottl;
+
+    // specular term
+    vec3 cspec = cl * (1 - nonspec) * pow(dottl * dottin + sdottl * sqrt(max(0, 1 - dottin * dottin)), 1.0 / roughness);
+
+    // blend base color and tip color based on v coordinate
+    vec3 aov_surfacecolor = cdd * mix(cbase, ctip, v);
+    vec3 aov_specularcolor = css;
+    vec3 aov_ambient = Ka * ambient;
+    vec3 aov_diffuse = Kd * cdiff;
+    vec3 aov_specular = Ks * cspec;
+
+    return aov_surfacecolor * (aov_ambient + aov_diffuse) + (aov_specularcolor * aov_specular);
+}
