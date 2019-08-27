@@ -1,0 +1,76 @@
+analytic
+
+////////////////////////////////////////////////////////////////////////////////
+// Gooch Non-PhotoRealistic shading model, by Mike King ////////////////////////
+// taken from The RenderMan Repository, http://www.renderman.org ///////////////
+////////////////////////////////////////////////////////////////////////////////
+
+// Renamed to MKgooch.sl for RMR -- tal AT renderman DOT org
+
+/* s_gooch.sl - a simple implementation of the Gooch
+ *              non-photorealistic lighting model
+ *
+ * DESCRIPTION   : This model is described in "A Non-Photorealistc
+ *                 Lighting Model For Automatic Technical 
+ *                 Illustration" in the Siggraph 1998 Proceedings.
+ *                 http://www.cs.utah.edu/~gooch/SIG98/abstract.html
+ *
+ * INPUTS        : 
+ *  Ka           : ambient factor
+ *  Kd           : diffuse factor
+ *  Ks           : specular factor
+ *  alpha        : Gooch cool color factor
+ *  beta         : Gooch warm color factor
+ *  b            : used to construct the cool color
+ *  y            : used to construct the warm color
+ *  roughness    : specular roughness
+ *  specularcolor: specular hilight color
+ *
+ * AUTHOR: written by Mike King
+ *               
+ ***************************************************/
+
+ ::begin parameters
+float Ka 0 1 0.2
+float Kd 0 1 0.4
+float Ks 0 1 0.9
+float calpha 0 1 0.5
+float cbeta 0 1 0.5
+float exponent   0 5 1
+float b 0 1 0.5
+float y 0 1 0.5
+float nondiff 0 1 0.5
+float nonspec 0 1 0.1
+color ambient 0.1 0.1 0.1
+color surfacecolor 0.6 0.2 0.2
+color specularcolor 0.8 0.8 0.8
+color cl 0.5 0.5 0.5
+::end parameters
+
+# shader code block
+
+::begin shader
+
+// Reference : https://www.cs.utah.edu/~shirley/papers/gooch98.pdf
+
+vec3 BRDF(vec3 L, vec3 V, vec3 N, vec3 X, vec3 Y)
+{
+    vec3 blue = vec3(0, 0, b);
+    vec3 yellow = vec3(y, y, 0);
+
+    vec3 kcool = blue + (surfacecolor * calpha);
+    vec3 kwarm = yellow + (surfacecolor * cbeta);
+
+    float ldotn = max(0, dot(L, N));
+    float blendval = 0.5 * (1 + ldotn);
+    vec3 cgooch = mix(kcool, kwarm, blendval);
+
+    vec3 aov_surfacecolor = surfacecolor;
+    vec3 aov_specularcolor = specularcolor;
+    vec3 aov_ambient = Ka * ambient;
+    vec3 aov_diffuse = Kd * cgooch;
+    vec3 H = normalize(V + L);
+    float aov_specular = Ks * pow(dot(N, H), exponent);
+
+    return aov_ambient + aov_diffuse + aov_specularcolor * aov_specular;
+}
