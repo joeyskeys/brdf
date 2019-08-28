@@ -1,0 +1,44 @@
+analytic
+
+////////////////////////////////////////////////////////////////////////////////
+// David C. Banks fast anisotropic model, from: ////////////////////////////////
+// "Illumination in Diverse Codimensions". /////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+::begin parameters
+float Kd 0 1 0.5
+float Ks 0 1 0.5
+float roughness 0 1 0.5
+float nondiff 0 1 0.5
+float nonspec 0 1 0.1
+vec3 adir 1 0 0
+color cdiff 0.4 0.4 0.4
+color cspec 0.9 0.9 0.9
+color cl 0.5 0.5 0.5
+::end parameters
+
+# shader code block
+
+::begin shader
+
+// Reference : https://pdfs.semanticscholar.org/acf8/4fb42887e466ce703fe811375ef052f4d8a2.pdf
+
+vec3 BRDF(vec3 L, vec3 V, vec3 N, vec3 X, vec3 Y)
+{
+    vec3 xdir = normalize(adir);
+    float costheta = dot(V, xdir);
+    float cospsi = dot(L, xdir);
+
+    
+    float pd = sqrt(max(0, 1 - cospsi * cospsi));
+    float ps = sqrt(max(0, 1 - costheta * costheta));
+    float ldotn = dot(L, N);
+
+    // diffuse term
+    vec3 aov_diffuse = cl * (1 - nondiff) * ldotn * Kd * pd;
+
+    // specular term
+    vec3 aov_specular = cl * (1 - nonspec) * ldotn * Ks * pow(pd * ps - cospsi * costheta, 1 / roughness);
+
+    return (cdiff * aov_diffuse) + (cspec * aov_specular);
+}
