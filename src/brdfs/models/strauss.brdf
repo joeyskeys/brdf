@@ -1,0 +1,105 @@
+analytic
+
+////////////////////////////////////////////////////////////////////////////////
+// Paul S.Strauss empirical BRDF, from :  //////////////////////////////////////
+// "A Realistic Lighting Model for Computer Animators" /////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+::begin parameters
+float smoothness 0 1 0.5
+float metalness 0 1 0.5
+float transparency 0 1 0.5
+float nondiff 0 1 0.5
+float nonspec 0 1 0.1
+color csurface 0.4 0.4 0.4
+color cl 0.5 0.5 0.5
+::end parameters
+
+# shader code block
+
+::begin shader
+
+// Model constants
+const float KF = 1.12;  // Fresnel adjustment constant
+const float KG = 1.01;  // Geometric attenuation adjustment constant
+const float KJ = 0.1;   // Constant for off-specular peaks for very rough surfaces [0,1] range
+const float PI = 3.14159265358979323846;
+const float PI_2 = PI / 2;
+
+// Fresnel reflectance approximation
+float straussfresnel(float beta)
+{
+    float x = beta / PI_2;
+    float x_minus_KF = x - KF;
+    float A = 1 / (x_minus_KF * x_minus_KF) - 1 / (KF * KF);
+    float one_minus_KF = 1 - KF;
+    float B = 1 / (one_minus_KF * one_minus_KF) - 1 / (KF * KF);
+    return A / B;
+}
+
+// Geometric attenuation approximation
+float straussgeoatten(float beta)
+{
+    float x = beta / PI_2;
+    float one_minus_KG = 1 - KG;
+    float x_minus_KG = x - KG;
+    float A = 1 / (one_minus_KG * one_minus_KG) - 1 / (x_minus_KG * x_minus_KG);
+    float B = 1 / (one_minus_KG * one_minus_KG) - 1 / (KF * KF);
+    return A / B;
+}
+
+vec3 BRDF(vec3 L, vec3 V, vec3 N, vec3 X, vec3 Y)
+{
+    float cosgamma = max(0, dot(V, N));
+
+    // Diffuse contribution factors
+	/* diffuse reflectivity multiplier, attenuates diffuse reflection for
+	 * metallic surfaces */
+    float d = (1 - metalness * smoothness);
+    // diffuse reflectivity as function of roughness and transparency
+    float rd = (1 - pow(smoothness, 3)) * (1 - transparency);
+
+    /* Specular reflectivity at normal incidence, all light not transmitted
+	 * nor diffusely reflected, is reflected specularly */
+    float rn = (1 - transparency) - rd;
+    // specular exponent h
+    float h = 3 / (1 - smoothness);
+
+    float cosalpha = max(0, dot(L, N));
+
+    /* diffuse contribution, depends on roughness and transparency
+	 * with attenuation for metallic surfaces */
+    vec3 cdiff = cl * (1 - nondiff) * d * rd * cosalpha;
+
+    // Specular contribution
+    /* Highlight vector H is the direction in which light along L
+	 * would be reflected if the surface were a perfect mirror */
+    vec3 H = normalize(reflect(-L, N));
+    float cosbeta = dot(H, V);
+    float alpha = acos(cosalpha);
+
+    /* reflectivity adjustment to account for off-specular peaks */
+	/* Fresnel effects */
+    float F = straussfresnel(alpha);
+    // Geometric effects
+    float j = F * straussgeoatten(alpha) * straussgeoatten(acos(cosgamma));
+
+    /* Adjusted reflectivity, creates an incraese in specular
+	 * reflectivity near grazing incidence except for when viewer
+	 * or incident angles are close to PI/2, at angles close to PI/2
+	 * geometric and Fresnel equations take over */
+    float rj = min(1, rn + (rn + KJ) * j);
+
+    // specular reflectivity
+    float rs = pow(cosbeta, h) * rj;
+
+    // Specular color, approaching white at grazing angles
+    vec3 csw = vec3(1) + metalness * (1 - F) * (csurface - vec3(1));
+    vec3 cspec = cl * (1 - nonspec) * rs * csw * cosalpha;
+
+    vec3 aov_surfacecolor = csurface;
+    vec3 aov_diffuse = cdiff;
+    vec3 aov_specular = cspec;
+
+    return aov_surfacecolor * aov_diffuse + aov_specular;
+}
