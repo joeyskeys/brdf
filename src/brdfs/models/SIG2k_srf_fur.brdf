@@ -1,0 +1,109 @@
+analytic
+
+////////////////////////////////////////////////////////////////////////////////
+// Fur surface shader, by Clint Hanson and Armin Bruderlin, from ///////////////
+// The RenderMan Repository - www.renderman.org ////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+// slightly tweaked to fit shrimp's structure
+
+/* Renamed to SIG2k_srf_fur to be consistent with the RMR
+ * -- tal AT renderman DOT org
+ * */
+
+/* fur shader shader, wich clumping and specular model, by Clint Hanson,
+ * and Armin Bruderlin. */
+
+::begin parameters
+float Ka 0 1 0.5
+float Kd 0 1 0.5
+float Ks 0 1 0.5
+float roughness1 0 1 0.2
+float roughness2 0 1 0.5
+float spec1 0 1 0.6
+float spec2 0 1 0.8
+float start_spec 0 1 0.3
+float end_spec 0 1 0.5
+float spec_size_fade 0 1 0.2
+float illum_width 0 1 0.5
+float var_fade_start 0 1 0.2
+float var_fade_end 0 1 0.8
+float clump_dark_strength 0 1 0.5
+float hair_col_var 0 1 0.5
+float hair_length 0 5 1
+float hair_id 0 5 1
+float v 0 1 0.5
+float nondiff 0 1 0.5
+float nonspec 0 1 0.1
+color rootcolor 0.1 0.1 0.1
+color tipcolor 0.8 0.8 0.5
+color specularcolor 1 1 1
+color ambient 0.1 0.1 0.1
+color cl 0.5 0.5 0.5
+vec3  clump_vect 1 0 0
+::end parameters
+
+# shader code block
+
+::begin shader
+
+vec3 fnc_diffuselgt(vec3 cin, vec3 L, vec3 N)
+{
+    vec3 cout = cin;
+    // assume L and N are normalized
+    float atten = max(0, dot(L, N));
+    return cout * atten;
+}
+
+float luminance(vec3 color)
+{
+    return 0.3 * color.x + 0.6 * color.y + 0.1 * color.z;
+}
+
+vec3 BRDF(vec3 L, vec3 V, vec3 N, vec3 X, vec3 Y)
+{
+    vec3 S = cross(N, X);
+    vec3 nhair = cross(X, S);
+    float l = clamp(dot(N, X), 0, 1);
+    float tdote = dot(X, V);
+    float sinbeta = sqrt(max(0, 1 - tdote * tdote));
+
+    /* When the hair is exactly perpendicular to the surface, use the surface
+	 * normal, when the hair is exactly tangent to the surface, use the hair
+	 * normal, otherwise, blend between the two normals in a linear fashion. */
+    vec3 norm_hair = normalize(l * N + (1 - l) * nhair);
+
+    /* Make the specular only hit in certain parts of the hair. V is along the
+	 * length o fthe hair. */
+    float Kspec = Ks * min(smoothstep(start_spec, start_spec + spec_size_fade, v),
+                           1 - smoothstep(end_spec, end_spec - spec_size_fade, v));
+
+    float clump_darkening;
+    if (clump_dark_strength > 0)
+    {
+        clump_darkening = 1 - (clump_dark_strength * abs(clamp(dot(L, normalize(-1 * clump_vect)), -1, 0)));
+    }
+    else
+    {
+        clump_darkening = 1.0;
+    }
+
+    vec3 cdiff = (1 - nondiff) * clump_darkening * fnc_diffuselgt(cl, L, norm_hair);
+    
+    float tdotl = dot(X, L);
+    float sinalpha = sqrt(max(0, 1 - tdotl * tdotl));
+    float kajiya = tdotl * tdotl + sinalpha * sinalpha;
+
+    vec3 cspec = cl * (1 - nonspec) * clump_darkening * (spec1 * pow(kajiya, 1 / roughness1) + spec2 * pow(kajiya, 1 / roughness2)) * specularcolor;
+
+    vec3 aov_ambient = Ka * ambient;
+    vec3 aov_specularcolor = specularcolor;
+    vec3 aov_diffuse = Kd * cdiff;
+    vec3 aov_specular = Kspec * v * cspec;
+
+    float darkening = clamp(hair_col_var, 0, 1);
+    darkening = 1 - smoothstep(var_fade_end, var_fade_start, abs(luminance(aov_diffuse))) * darkening;
+    vec3 aov_surfacecolor = mix(rootcolor, tipcolor, v) * darkening;
+
+    return aov_surfacecolor * (aov_ambient + aov_diffuse) + aov_specularcolor * aov_specular;
+}
